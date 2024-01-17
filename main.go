@@ -24,6 +24,25 @@ func main() {
 	for num := range mergeChannels(a, b, c) {
 		fmt.Println(num)
 	}
+
+	d := make(chan int, 2)
+	e := make(chan int, 2)
+	f := make(chan int, 1)
+
+	d <- 5
+	d <- 6
+	e <- 7
+	e <- 8
+	f <- 9
+
+	close(d)
+	close(e)
+	close(f)
+
+	fmt.Println("Using buffered channel:")
+	for num := range mergeChannelsBuffered(5, d, e, f) {
+		fmt.Println(num)
+	}
 }
 
 func mergeChannels(n ...chan int) chan int {
@@ -44,6 +63,27 @@ func mergeChannels(n ...chan int) chan int {
 		wg.Wait()
 		close(result)
 	}()
+
+	return result
+}
+
+// using buffered channel to avoid blocking
+func mergeChannelsBuffered(size int, n ...chan int) chan int {
+	wg := &sync.WaitGroup{}
+	result := make(chan int, size)
+
+	for _, c := range n {
+		wg.Add(1)
+		go func(ch chan int) {
+			for chanValue := range ch {
+				result <- chanValue
+			}
+			wg.Done()
+		}(c)
+	}
+
+	wg.Wait()
+	close(result)
 
 	return result
 }
